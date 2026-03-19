@@ -12,6 +12,8 @@ A HTTP service that reads Kubernetes OpenAPI v3 documents using the local Kubern
   - https://dotnet.microsoft.com/en-us/download/dotnet/10.0
 - Install KubeCRDStore
   - `dotnet tool install --global KubeCRDStore --prerelease`
+- Run KubeCRDStore
+  - `kubecrdstore` 
 - Within the VS Code Project
   - Add `/.vscode/settings.json`
     ```json
@@ -36,3 +38,4 @@ A HTTP service that reads Kubernetes OpenAPI v3 documents using the local Kubern
         }
     }
     ```
+- Restart VS Code
