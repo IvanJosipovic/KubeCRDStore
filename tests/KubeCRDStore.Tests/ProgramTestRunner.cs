@@ -11,9 +11,10 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.OpenApi;
 using Microsoft.OpenApi.Reader;
 using k8s;
+using KubeCRDStore;
 using Xunit;
 
-namespace KubeCRDStoreProxy.Tests
+namespace KubeCRDStore.Tests
 {
     public class ProgramTests
     {
@@ -123,6 +124,45 @@ namespace KubeCRDStoreProxy.Tests
             Assert.NotNull(raw);
             using var actualDoc = JsonDocument.Parse(raw);
             Assert.False(actualDoc.RootElement.TryGetProperty("oneOf", out _));
+        }
+
+        [Fact]
+        public void TestReplacesIntOrStringFormatWithOneOf()
+        {
+            var doc = ReadDocument("{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"test\",\"version\":\"1.0\"},\"components\":{\"schemas\":{\"MySchema\":{\"x-kubernetes-group-version-kind\":[{\"group\":\"example.com\",\"version\":\"v1\",\"kind\":\"Thing\"}],\"type\":\"object\",\"properties\":{\"value\":{\"format\":\"int-or-string\"}}}}}}");
+
+            var raw = Program.TryFindSchemaRaw(doc, "example.com", "Thing", "v1");
+
+            Assert.NotNull(raw);
+            using var actualDoc = JsonDocument.Parse(raw);
+            var value = actualDoc.RootElement.GetProperty("properties").GetProperty("value");
+            Assert.Equal(2, value.GetProperty("oneOf").GetArrayLength());
+        }
+
+        [Fact]
+        public void TestIntOrStringReplacementPreservesDescription()
+        {
+            var doc = ReadDocument("{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"test\",\"version\":\"1.0\"},\"components\":{\"schemas\":{\"MySchema\":{\"x-kubernetes-group-version-kind\":[{\"group\":\"example.com\",\"version\":\"v1\",\"kind\":\"Thing\"}],\"type\":\"object\",\"properties\":{\"value\":{\"format\":\"int-or-string\",\"description\":\"kept\"}}}}}}");
+
+            var raw = Program.TryFindSchemaRaw(doc, "example.com", "Thing", "v1");
+
+            Assert.NotNull(raw);
+            using var actualDoc = JsonDocument.Parse(raw);
+            var value = actualDoc.RootElement.GetProperty("properties").GetProperty("value");
+            Assert.Equal("kept", value.GetProperty("description").GetString());
+        }
+
+        [Fact]
+        public void TestReplacesKubernetesIntOrStringExtensionWithOneOf()
+        {
+            var doc = ReadDocument("{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"test\",\"version\":\"1.0\"},\"components\":{\"schemas\":{\"MySchema\":{\"x-kubernetes-group-version-kind\":[{\"group\":\"example.com\",\"version\":\"v1\",\"kind\":\"Thing\"}],\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\",\"x-kubernetes-int-or-string\":true}}}}}}");
+
+            var raw = Program.TryFindSchemaRaw(doc, "example.com", "Thing", "v1");
+
+            Assert.NotNull(raw);
+            using var actualDoc = JsonDocument.Parse(raw);
+            var value = actualDoc.RootElement.GetProperty("properties").GetProperty("value");
+            Assert.Equal(2, value.GetProperty("oneOf").GetArrayLength());
         }
 
         [Fact]

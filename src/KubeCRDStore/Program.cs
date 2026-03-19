@@ -13,12 +13,14 @@ using Microsoft.OpenApi;
 using Microsoft.OpenApi.Reader;
 using k8s;
 
-namespace KubeCRDStoreProxy
+namespace KubeCRDStore
 {
     public static class Program
     {
         private const string MissingKubernetesClientMessage = "Kubernetes client configuration not available.";
         private const string InvalidResourceNameMessage = "resource name must be in the format {ResourceKind}_{ResourceAPIVersion}";
+        private const string IntOrStringFormat = "int-or-string";
+        private const string LocalSchemaReferencePrefix = "#/components/schemas/";
         private static readonly string[] CompositionKeys = ["allOf", "anyOf", "oneOf"];
 
         public static Task Main(string[] args) => BuildApp(args).RunAsync();
@@ -522,10 +524,10 @@ namespace KubeCRDStoreProxy
         {
             using var writer = new StringWriter();
             schema.SerializeAsV3(new OpenApiJsonWriter(writer, new OpenApiWriterSettings()));
-            return RewriteLocalSchemaReferences(writer.ToString(), baseUrl);
+            return PostProcessSchemaJson(writer.ToString(), baseUrl);
         }
 
-        private static string RewriteLocalSchemaReferences(string json, string? baseUrl)
+        private static string PostProcessSchemaJson(string json, string? baseUrl)
         {
             var root = JsonNode.Parse(json);
             if (root == null)
@@ -533,7 +535,7 @@ namespace KubeCRDStoreProxy
                 return json;
             }
 
-            root = CollapseSingleEntryCompositions(root);
+            root = NormalizeSchema(root);
 
             if (!string.IsNullOrWhiteSpace(baseUrl))
             {
@@ -543,7 +545,7 @@ namespace KubeCRDStoreProxy
             return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
         }
 
-        private static JsonNode CollapseSingleEntryCompositions(JsonNode node)
+        private static JsonNode NormalizeSchema(JsonNode node)
         {
             if (node is JsonObject obj)
             {
@@ -557,8 +559,13 @@ namespace KubeCRDStoreProxy
                 {
                     if (obj[propertyName] != null)
                     {
-                        obj[propertyName] = CollapseSingleEntryCompositions(obj[propertyName]!.DeepClone());
+                        obj[propertyName] = NormalizeSchema(obj[propertyName]!.DeepClone());
                     }
+                }
+
+                if (IsIntOrStringSchema(obj))
+                {
+                    return ExpandIntOrStringSchema(obj);
                 }
 
                 foreach (var compositionKey in CompositionKeys)
@@ -573,7 +580,7 @@ namespace KubeCRDStoreProxy
                         continue;
                     }
 
-                    var collapsedChild = CollapseSingleEntryCompositions(compositionArray[0]!.DeepClone());
+                    var collapsedChild = compositionArray[0]!.DeepClone();
                     CopySiblingProperties(obj, collapsedChild, compositionKey);
                     return collapsedChild;
                 }
@@ -587,7 +594,7 @@ namespace KubeCRDStoreProxy
                 {
                     if (array[i] != null)
                     {
-                        array[i] = CollapseSingleEntryCompositions(array[i]!.DeepClone());
+                        array[i] = NormalizeSchema(array[i]!.DeepClone());
                     }
                 }
 
@@ -597,7 +604,32 @@ namespace KubeCRDStoreProxy
             return node;
         }
 
-        private static void CopySiblingProperties(JsonObject source, JsonNode target, string skippedProperty)
+        private static bool IsIntOrStringSchema(JsonObject obj)
+        {
+            if (string.Equals(obj["format"]?.GetValue<string>(), IntOrStringFormat, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return obj["x-kubernetes-int-or-string"] is JsonValue flag
+                && flag.TryGetValue<bool>(out var enabled)
+                && enabled;
+        }
+
+        private static JsonObject ExpandIntOrStringSchema(JsonObject source)
+        {
+            var replacement = new JsonObject
+            {
+                ["oneOf"] = new JsonArray(
+                    new JsonObject { ["type"] = "string" },
+                    new JsonObject { ["type"] = "integer" })
+            };
+
+            CopySiblingProperties(source, replacement, "format", "type", "x-kubernetes-int-or-string");
+            return replacement;
+        }
+
+        private static void CopySiblingProperties(JsonObject source, JsonNode target, params string[] skippedProperties)
         {
             if (target is not JsonObject targetObject)
             {
@@ -606,7 +638,7 @@ namespace KubeCRDStoreProxy
 
             foreach (var property in source)
             {
-                if (property.Key != skippedProperty && !targetObject.ContainsKey(property.Key))
+                if (Array.IndexOf(skippedProperties, property.Key) < 0 && !targetObject.ContainsKey(property.Key))
                 {
                     targetObject[property.Key] = property.Value?.DeepClone();
                 }
@@ -620,10 +652,9 @@ namespace KubeCRDStoreProxy
                 if (obj.TryGetPropertyValue("$ref", out var refNode) && refNode is JsonValue refValue)
                 {
                     var refText = refValue.GetValue<string>();
-                    const string localPrefix = "#/components/schemas/";
-                    if (refText.StartsWith(localPrefix, StringComparison.Ordinal))
+                    if (refText.StartsWith(LocalSchemaReferencePrefix, StringComparison.Ordinal))
                     {
-                        obj["$ref"] = $"{baseUrl}/components/schemas/{refText[localPrefix.Length..]}";
+                        obj["$ref"] = $"{baseUrl}/components/schemas/{refText[LocalSchemaReferencePrefix.Length..]}";
                     }
                 }
 

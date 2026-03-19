@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\KubeCRDStoreProxy\KubeCRDStoreProxy.csproj" />
+    <ProjectReference Include="..\..\src\KubeCRDStore\KubeCRDStore.csproj" />
   </ItemGroup>
 
   <ItemGroup>
