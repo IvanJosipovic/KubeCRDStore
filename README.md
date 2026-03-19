@@ -1,1 +1,1 @@
-# KubeCRDStoreProxy
+# KubeCRDStore

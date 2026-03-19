@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/KubeCRDStore/KubeCRDStore.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/KubeCRDStore.Tests/KubeCRDStore.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <OutputType>exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <IsPackable>true</IsPackable>
+    <ToolCommandName>kubecrdstore</ToolCommandName>
+    <PackageId>KubeCRDStore</PackageId>
+    <Authors>Ivan Josipovic</Authors>
+    <Description>HTTP service that reads Kubernetes OpenAPI v3 documents and serves CRD schemas as standalone JSON, rewriting local schema references so they can be consumed directly.</Description>
+    <PackageTags>vs code; crd; store; api</PackageTags>
+    <RepositoryUrl>https://github.com/IvanJosipovic/KubeCRDStore</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="KubernetesClient" Version="19.0.2" />
+    <PackageReference Include="Microsoft.OpenApi" Version="3.4.0" />
+    <PackageReference Include="Microsoft.OpenApi.Readers" Version="1.6.28" />
+  </ItemGroup>
+
+</Project>
