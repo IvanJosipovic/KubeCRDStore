@@ -15,7 +15,7 @@ A HTTP service that reads Kubernetes OpenAPI v3 documents using the local Kubern
 - Run KubeCRDStore
   - `kubecrdstore` 
 - Within the VS Code Project
-  - Add `/.vscode/settings.json`
+  - Add `/.vscode/extensions.json`
     ```json
     {
         "recommendations": [
