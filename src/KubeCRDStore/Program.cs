@@ -606,7 +606,10 @@ public static class Program
 
     private static bool IsIntOrStringSchema(JsonObject obj)
     {
-        if (string.Equals(obj["format"]?.GetValue<string>(), IntOrStringFormat, StringComparison.OrdinalIgnoreCase))
+        if (obj.TryGetPropertyValue("format", out var fmtNode)
+            && fmtNode is JsonValue fmtValue
+            && fmtValue.TryGetValue<string>(out var fmt)
+            && string.Equals(fmt, IntOrStringFormat, StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
