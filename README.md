@@ -6,7 +6,17 @@
 
 A HTTP service that reads Kubernetes OpenAPI v3 documents using the local Kubernetes Context and serves CRD schemas as standalone JSON, rewriting local schema references so they can be consumed directly. This API is utilized by the `redhat.vscode-yaml` extension.
 
-## How to use
+## How to use with KubeConform
+- Install .Net 10
+  - https://dotnet.microsoft.com/en-us/download/dotnet/10.0
+- Install KubeCRDStore
+  - `dotnet tool install --global KubeCRDStore --prerelease`
+- Run KubeCRDStore
+  - `kubecrdstore` 
+- Run KubeConform
+  - `helm template . | kubeconform -schema-location default -schema-location "http://localhost:5000/{{ .Group }}/{{ .ResourceKind }}_{{ .ResourceAPIVersion }}.json"`
+
+## How to use with VS Code
 
 - Install .Net 10
   - https://dotnet.microsoft.com/en-us/download/dotnet/10.0
